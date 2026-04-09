@@ -1,4 +1,4 @@
-﻿# Fraud Detection System — Build Journal
+# Fraud Detection System — Build Journal
 
 **Built in 48 hours | IEEE-CIS Dataset | XGBoost + FastAPI + Docker**
 
@@ -18,10 +18,10 @@ A real-time fraud detection API that:
 - Runs in under 20ms
 - Deployed in a Docker container
 
-`
+```
 Input:  transaction JSON
 Output: { fraud_score: 0.31, risk_tier: "HIGH", decision: "BLOCK", reasons: [...] }
-`
+```
 
 ---
 
@@ -39,17 +39,17 @@ Output: { fraud_score: 0.31, risk_tier: "HIGH", decision: "BLOCK", reasons: [...
 
 ### What the columns actually mean
 
-- TransactionAmt — how much money changed hands
-- ProductCD — type of product: W=physical, C=digital, H=hotel, R=travel, S=service
-- card1-card6 — card account number, type, brand, country (all anonymized)
-- P_emaildomain — purchaser email provider (gmail.com, protonmail.com etc)
-- R_emaildomain — recipient email provider
-- C1-C14 — count features (how many times something happened — anonymized)
-- D1-D15 — time delta features (days between events — anonymized)
-- M1-M9 — match features (does name match billing? T/F)
-- V1-V339 — Vesta's proprietary engineered features (most powerful, fully anonymized)
-- DeviceType — desktop or mobile
-- id_01-id_38 — device, browser, network signals
+- `TransactionAmt` — how much money changed hands
+- `ProductCD` — type of product: W=physical, C=digital, H=hotel, R=travel, S=service
+- `card1-card6` — card account number, type, brand, country (all anonymized)
+- `P_emaildomain` — purchaser email provider (gmail.com, protonmail.com etc)
+- `R_emaildomain` — recipient email provider
+- `C1-C14` — count features (how many times something happened — anonymized)
+- `D1-D15` — time delta features (days between events — anonymized)
+- `M1-M9` — match features (does name match billing? T/F)
+- `V1-V339` — Vesta's proprietary engineered features (most powerful, fully anonymized)
+- `DeviceType` — desktop or mobile
+- `id_01-id_38` — device, browser, network signals
 
 **The hard truth about V-features:** Nobody outside Vesta knows exactly what V317 or V258 mean. They're black boxes. But SHAP told us they matter — so we used them.
 
@@ -63,14 +63,14 @@ Output: { fraud_score: 0.31, risk_tier: "HIGH", decision: "BLOCK", reasons: [...
 
 **What failed:** Running bash commands in PowerShell.
 
-`powershell
+```powershell
 # FAILED — && doesn't work in PowerShell
 git init fraud-detection && cd fraud-detection
 
 # FIXED — run separately
 git init fraud-detection
 cd fraud-detection
-`
+```
 
 **Lesson:** Always check your shell. PowerShell ≠ bash. Most tutorials assume bash.
 
@@ -78,27 +78,27 @@ cd fraud-detection
 
 ### Step 2: Getting the Data
 
-**What worked:** Kaggle CLI with kaggle.json credentials.
+**What worked:** Kaggle CLI with `kaggle.json` credentials.
 
-**What failed:** .env file not being read by Python.
+**What failed:** `.env` file not being read by Python.
 
-`python
+```python
 # FAILED — env vars were None because .env wasn't loading
 os.environ['KAGGLE_USERNAME'] = os.getenv('KAGGLE_USERNAME')  # None!
 
 # FIXED — bypass .env entirely, use Kaggle CLI directly
 kaggle competitions download -c ieee-fraud-detection -p data\raw
-`
+```
 
 **Lesson:** Don't over-engineer config files for a 2-day build. Use the simplest path that works.
 
 **Result:**
-`
+```
 Transaction shape: (590540, 394)
 Identity shape:    (144233, 41)
 Merged shape:      (590540, 434)
 Fraud rate:        3.50%
-`
+```
 
 ---
 
@@ -107,24 +107,24 @@ Fraud rate:        3.50%
 **Key findings from EDA:**
 
 **Finding 1 — The class imbalance problem**
-`
+```
 Legit: 569,877  (96.5%)
 Fraud:  20,663  ( 3.5%)
-`
+```
 A model that predicts "legit" for everything gets 96.5% accuracy. Accuracy is useless here. We need Precision, Recall, and AUC-ROC.
 
 **Finding 2 — Fraud amounts are sneaky**
-`
-Legit median:  .50
-Fraud median:  .00
-`
-Fraudsters don't always make small test charges. The .098 repeated 3 times in fraud samples is a card-testing pattern — same card, same amount, rapid succession.
+```
+Legit median:  $68.50
+Fraud median:  $75.00
+```
+Fraudsters don't always make small test charges. The $37.098 repeated 3 times in fraud samples is a card-testing pattern — same card, same amount, rapid succession.
 
 **Finding 3 — Product C is a massive red flag**
-`
+```
 ProductCD = C (digital goods): 11.7% fraud rate
 Overall fraud rate:              3.5%
-`
+```
 Digital goods = instant delivery, no shipping address, easy to resell. Perfect for fraudsters.
 
 **Finding 4 — The V-features are powerful but mysterious**
@@ -138,17 +138,17 @@ SHAP analysis later revealed V317, V258, V306 as top predictors. We still don't 
 
 | Feature | Why it matters |
 |---------|---------------|
-| hour, is_night | Fraud spikes at 2-4am when victims sleep |
-| mt_decimal | .098 repeated = card testing script |
-| mt_zscore_card | ,000 charge on a /month card = suspicious |
-| card1_count | New card used once = higher risk |
-| high_risk_combo | Digital + credit + mobile = highest fraud rate |
-| email_match | Buyer and recipient on different domains = suspicious |
-| p_email_high_risk | protonmail.com = anonymous = red flag |
+| `hour`, `is_night` | Fraud spikes at 2-4am when victims sleep |
+| `amt_decimal` | $37.098 repeated = card testing script |
+| `amt_zscore_card` | $4,000 charge on a $50/month card = suspicious |
+| `card1_count` | New card used once = higher risk |
+| `high_risk_combo` | Digital + credit + mobile = highest fraud rate |
+| `email_match` | Buyer and recipient on different domains = suspicious |
+| `p_email_high_risk` | protonmail.com = anonymous = red flag |
 
 **What failed — SMOTE errors**
 
-`
+```
 # FAILED — string values breaking SMOTE
 ValueError: could not convert string to float: 'NotFound'
 
@@ -158,16 +158,16 @@ ValueError: Input X contains infinity or a value too large for dtype('float64')
 # Root cause: amt_zscore_card divided by zero std for single-transaction cards
 # Fix:
 X = X.replace([np.inf, -np.inf], -999)
-`
+```
 
-**Lesson:** Always check for infinity values after any division operation. std=0 is common with rare categories.
+**Lesson:** Always check for infinity values after any division operation. `std=0` is common with rare categories.
 
 **SMOTE result:**
-`
+```
 Before: Fraud 16,530  (3.50%)   ← imbalanced
 After:  Fraud 455,902 (50.00%)  ← balanced
 Training size: 911,804 rows
-`
+```
 
 ---
 
@@ -175,14 +175,14 @@ Training size: 911,804 rows
 
 #### Attempt 1 — 3-model ensemble (Isolation Forest + XGBoost + LightGBM)
 
-`
+```
 Isolation Forest AUC:  0.709
 XGBoost AUC:           0.902
 LightGBM AUC:          0.897
 Ensemble AUC:          0.879  ← WORSE than XGBoost alone
 Precision:             12%    ← terrible
 False Positive Rate:   20%    ← blocking 23,422 innocent customers
-`
+```
 
 **What went wrong:** Isolation Forest (AUC 0.709) dragged down the ensemble. Including a weak model in a weighted average hurts the strong models.
 
@@ -190,31 +190,30 @@ False Positive Rate:   20%    ← blocking 23,422 innocent customers
 
 #### Attempt 2 — XGBoost + LightGBM ensemble
 
-`
+```
 Ensemble AUC:  0.900
 Precision:     69%
 Recall:        47%
 FPR:           0.75%   ← massively better
 Legit blocked: 857     ← down from 23,422
-`
+```
 
 **Lesson:** More models ≠ better ensemble. Only include models that add signal, not noise.
 
 #### Attempt 3 — Finetuned hyperparameters
 
 Changed:
-- 
-_estimators: 300 → 500 (more trees)
-- max_depth: 6 → 8 (deeper patterns)
-- learning_rate: 0.05 → 0.03 (slower, more careful)
-- min_child_weight: 5 → 3 (catch rarer fraud patterns)
+- `n_estimators: 300 → 500` (more trees)
+- `max_depth: 6 → 8` (deeper patterns)
+- `learning_rate: 0.05 → 0.03` (slower, more careful)
+- `min_child_weight: 5 → 3` (catch rarer fraud patterns)
 
-`
+```
 XGBoost AUC:   0.902 → 0.925  (+0.023)
 Ensemble AUC:  0.900 → 0.918  (+0.018)
 Precision:     69%   → 73%
 Legit blocked: 857   → 768
-`
+```
 
 **Lesson:** XGBoost was still learning at tree 300. Always check if the model is still improving before stopping.
 
@@ -226,30 +225,30 @@ Legit blocked: 857   → 768
 
 **What failed — module import error**
 
-`python
+```python
 # FAILED
 uvicorn.run('src.api.main:app', reload=True)
 # ModuleNotFoundError: No module named 'src'
 
 # FIXED — pass the app object directly
 uvicorn.run(app, host='0.0.0.0', port=8000, reload=False)
-`
+```
 
 **What failed — port already in use**
 
-`
+```
 [WinError 10048] Only one usage of each socket address is permitted
-`
+```
 
-Fix: 	askkill /PID <process_id> /F or change port to 8001.
+Fix: `taskkill /PID <process_id> /F` or change port to 8001.
 
 **What failed — wrong config being loaded**
 
 The API kept loading the OLD ensemble config (threshold 0.1027, 3 models) instead of the new one (threshold 0.3691, 2 models). Even after rewriting the code.
 
-Root cause: We ran training twice. Second run saved a NEW ensemble_config.pkl but the API was pointing at the old one from a cached import.
+Root cause: We ran training twice. Second run saved a NEW `ensemble_config.pkl` but the API was pointing at the old one from a cached import.
 
-Fix: Created ix_config.py to force-overwrite with correct values.
+Fix: Created `fix_config.py` to force-overwrite with correct values.
 
 ---
 
@@ -257,15 +256,15 @@ Fix: Created ix_config.py to force-overwrite with correct values.
 
 **The biggest technical challenge of the build.**
 
-Our full model used 450 features. The API could only send 15-20. We filled the rest with -999.
+Our full model used 450 features. The API could only send 15-20. We filled the rest with `-999`.
 
-Result: The model saw -999 everywhere and got confused — it had never seen that pattern in training.
+Result: The model saw `-999` everywhere and got confused — it had never seen that pattern in training.
 
-`
+```
 # Real test results with 450-feature model + -999 padding:
-Legit  mastercard:    fraud_score = 0.82  → BLOCK  ❌ (wrong)
+Legit $50 mastercard:    fraud_score = 0.82  → BLOCK  ❌ (wrong)
 Fraud protonmail mobile: fraud_score = 0.35  → APPROVE ❌ (wrong)
-`
+```
 
 **Three attempts to fix this:**
 
@@ -276,7 +275,7 @@ Root cause: Our hand-crafted features didn't have enough signal without the V-fe
 
 **Attempt 2 — Use top 20 SHAP features**
 Let SHAP tell us which 20 features the full model actually relied on.
-`
+```
 Top features by SHAP importance:
   0.49  card6
   0.44  TransactionAmt
@@ -285,29 +284,29 @@ Top features by SHAP importance:
   0.29  V317
   0.29  C14
   ...
-`
-Retrained on these 20 features using raw data + scale_pos_weight=27.
+```
+Retrained on these 20 features using raw data + `scale_pos_weight=27`.
 Result: AUC 0.903, scores behaved correctly.
 
 **Attempt 3 — Fix default values**
-Was sending -999 for V317 etc. Real median = 0.
-`python
+Was sending `-999` for V317 etc. Real median = 0.
+```python
 # WRONG — -999 is not a real value
 'V317': t.V317 if t.V317 is not None else -999
 
 # RIGHT — use real median from training data
 'V317': t.V317 if t.V317 is not None else 0
-`
+```
 
 **Final working results:**
-`
+```
 Fraud transaction:  fraud_score = 0.31  → BLOCK   ✅
 Legit transaction:  fraud_score = 0.04  → APPROVE ✅
 Suspicious:         fraud_score = 0.21  → BLOCK   ✅
 API latency:        ~15ms               ✅
-`
+```
 
-**Lesson:** Feature distribution at inference must match training distribution. -999 for missing values only works if the model was trained with -999 for those same features.
+**Lesson:** Feature distribution at inference must match training distribution. `-999` for missing values only works if the model was trained with `-999` for those same features.
 
 ---
 
@@ -315,15 +314,15 @@ API latency:        ~15ms               ✅
 
 **What failed — WSL 2 not installed**
 
-`
+```
 Docker Desktop is unable to start
-`
+```
 
-Fix: wsl --install → restart computer → Docker Desktop started.
+Fix: `wsl --install` → restart computer → Docker Desktop started.
 
 **What worked perfectly:**
 
-`dockerfile
+```dockerfile
 FROM python:3.11-slim
 WORKDIR /app
 COPY requirements.txt .
@@ -332,13 +331,13 @@ COPY src/ ./src/
 COPY models/ ./models/
 EXPOSE 8000
 CMD ["python", "src/api/main.py"]
-`
+```
 
-`
+```
 docker build -t fraud-detection .   # 92 seconds
 docker run -p 8000:8000 fraud-detection
 # → running at http://localhost:8000
-`
+```
 
 **Lesson:** Docker on Windows requires WSL 2. Always install WSL first before Docker.
 
@@ -420,16 +419,16 @@ separate alert layer, not combined with supervised models.
 
 ## Business Impact
 
-Assumptions:  annual GMV, 0.1% fraud rate = /month fraud loss.
+Assumptions: $25M annual GMV, 0.1% fraud rate = $25K/month fraud loss.
 
 | Scenario | Fraud caught | Monthly saving |
 |----------|-------------|----------------|
-| No model | 0% |  |
-| Our model (46% recall) | 46% | ,500 |
-| Perfect model (100% recall) | 100% | ,000 |
+| No model | 0% | $0 |
+| Our model (46% recall) | 46% | $11,500 |
+| Perfect model (100% recall) | 100% | $25,000 |
 
-API infrastructure cost on Render free tier: /month.
-ROI: infinite (positive return on  cost).
+API infrastructure cost on Render free tier: $0/month.
+ROI: infinite (positive return on $0 cost).
 
 ---
 
@@ -450,7 +449,7 @@ ROI: infinite (positive return on  cost).
 
 ## Files Reference
 
-`
+```
 fraud-detection/
 ├── data/
 │   ├── raw/                     ← Kaggle CSV files (gitignored)
@@ -483,14 +482,14 @@ fraud-detection/
 ├── docker-compose.yml           ← multi-service config
 ├── requirements.txt             ← all dependencies
 └── .env                         ← credentials (gitignored)
-`
+```
 
 ---
 
 ## Running It Yourself
 
 **Option 1 — Local Python:**
-`ash
+```bash
 git clone https://github.com/YOUR_USERNAME/fraud-detection
 cd fraud-detection
 python -m venv .venv
@@ -498,17 +497,17 @@ python -m venv .venv
 pip install -r requirements.txt
 python src/api/main.py
 # open http://localhost:8000/docs
-`
+```
 
 **Option 2 — Docker:**
-`ash
+```bash
 docker build -t fraud-detection .
 docker run -p 8000:8000 fraud-detection
 # open http://localhost:8000/docs
-`
+```
 
 **Test it:**
-`ash
+```bash
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
@@ -523,10 +522,10 @@ curl -X POST http://localhost:8000/predict \
     "M4": "M2",
     "M6": "F"
   }'
-`
+```
 
 Expected response:
-`json
+```json
 {
   "fraud_score": 0.3149,
   "risk_tier": "HIGH",
@@ -535,14 +534,8 @@ Expected response:
     "Digital product — high fraud category",
     "Credit card — higher risk than debit",
     "Mobile device transaction",
-    "Unusual decimal amount: .098"
+    "Unusual decimal amount: $37.098"
   ],
   "latency_ms": 17.0
 }
-`
-
-## Live API
-https://fraud-detection-api-fjg8.onrender.com/docs
-
-## GitHub
-https://github.com/Lhakson/fraud-detection-system
+```
