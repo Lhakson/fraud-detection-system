@@ -4,7 +4,7 @@
 > Built in 48 hours. AUC 0.90. Production-grade.
 
 ## Live API
-https://YOUR-DEPLOYMENT-URL/docs
+https://https://fraud-detection-api-fjg8.onrender.com/docs
 
 ## Results
 | Metric | Score |
