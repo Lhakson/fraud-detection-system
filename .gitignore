@@ -1,0 +1,25 @@
+﻿# Environment - NEVER commit credentials
+.env
+.venv/
+__pycache__/
+*.pyc
+
+# Data - too large for GitHub
+data/raw/
+data/processed/
+
+# Temp scripts
+check_config.py
+check_features.py
+debug_scores.py
+fix_config.py
+fix_threshold.py
+retrain_api_model.py
+retrain_final.py
+set_threshold.py
+test_model.py
+top_features.py
+
+# MLflow local runs
+mlruns/
+mlflow.db
