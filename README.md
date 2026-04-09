@@ -74,4 +74,7 @@ IEEE-CIS Fraud Detection — Kaggle (590K transactions, 3.5% fraud rate)
 
 ## Business Impact
 Catching 46% of fraud on $25M GMV = ~$11.5K/month saved.  
-API cost on Render free tier = $0/month.
+API cost on Render free tier = $0/month.''
+
+## Demo
+[Watch 5-minute demo]https://www.loom.com/share/d161675b65794281bc64927560b00d54
