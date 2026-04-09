@@ -539,3 +539,9 @@ Expected response:
   "latency_ms": 17.0
 }
 ```
+
+## Live API
+https://fraud-detection-api-fjg8.onrender.com/docs
+
+## GitHub
+https://github.com/Lhakson/fraud-detection-system
